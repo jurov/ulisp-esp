@@ -13,7 +13,7 @@ const char LispLibrary[] PROGMEM = "";
 #define printfreespace
 // #define printgcs
 // #define sdcardsupport
-// #define gfxsupport
+#define gfxsupport
 // #define lisplibrary
 // #define lineeditor
 // #define vt100
@@ -31,17 +31,16 @@ const char LispLibrary[] PROGMEM = "";
 #elif defined (ESP32)
   #include <WiFi.h>
 #endif
+#include "config.h"
 
 #if defined(gfxsupport)
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_SSD1306.h>
-#define COLOR_WHITE 1
-#define COLOR_BLACK 0
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define OLED_RESET     4
-Adafruit_SSD1306 tft(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
+extern TTGOClass *ttgo;
+#define COLOR_WHITE TFT_WHITE
+#define COLOR_BLACK TFT_BLACK
+#define SCREEN_WIDTH 320 // OLED display width, in pixels
+#define SCREEN_HEIGHT 240 // OLED display height, in pixels
 #endif
+
 
 #if defined(sdcardsupport)
   #include <SD.h>
@@ -118,7 +117,7 @@ DIGITALWRITE, ANALOGREAD, ANALOGWRITE, DELAY, MILLIS, SLEEP, NOTE, EDIT, PPRINT,
 REQUIRE, LISTLIBRARY, AVAILABLE, WIFISERVER, WIFISOFTAP, CONNECTED, WIFILOCALIP, WIFICONNECT, DRAWPIXEL,
 DRAWLINE, DRAWRECT, FILLRECT, DRAWCIRCLE, FILLCIRCLE, DRAWROUNDRECT, FILLROUNDRECT, DRAWTRIANGLE,
 FILLTRIANGLE, DRAWCHAR, SETCURSOR, SETTEXTCOLOR, SETTEXTSIZE, SETTEXTWRAP, FILLSCREEN, SETROTATION,
-INVERTDISPLAY, ENDFUNCTIONS };
+INVERTDISPLAY, EXIT, ENDFUNCTIONS };
 
 // Typedefs
 
@@ -166,7 +165,7 @@ typedef int BitOrder;
   #define SDCARD_SS_PIN 10
 
 #elif defined(ESP32)
-  #define WORKSPACESIZE 8000-SDSIZE       /* Cells (8*bytes) */
+  #define WORKSPACESIZE 4000-SDSIZE       /* Cells (8*bytes) */
   #define EEPROMSIZE 4096                 /* Bytes available for EEPROM */
   #define SYMBOLTABLESIZE 1024            /* Bytes */
   #define analogWrite(x,y) dacWrite((x),(y))
@@ -215,6 +214,9 @@ object *apply (symbol_t name, object *function, object *args, object *env);
 char *lookupsymbol (symbol_t name);
 char *cstring (object *form, char *buffer, int buflen);
 object *edit (object *fun);
+
+//t-watch
+void exit_repl();
 
 // Error handling
 
@@ -1358,7 +1360,7 @@ inline void WiFiwrite (char c) { client.write(c); }
 inline void SDwrite (char c) { SDpfile.write(c); }
 #endif
 #if defined(gfxsupport)
-inline void gfxwrite (char c) { tft.write(c); tft.display(); }
+inline void gfxwrite (char c) { ttgo->tft->write(c); }
 #endif
 
 pfun_t pstreamfun (object *args) {
@@ -2889,6 +2891,13 @@ object *fn_log (object *args, object *env) {
   else return makefloat(fresult / log(checkintfloat(LOG, first(args))));
 }
 
+//t-watch
+object *fn_exit (object *args, object *env) {
+  (void) args, (void) env;
+  exit_repl();
+  return nil;
+}
+
 int intpower (int base, int exp) {
   int result = 1;
   while (exp) {
@@ -3702,8 +3711,7 @@ object *fn_drawpixel (object *args, object *env) {
   (void) env;
   uint16_t colour = COLOR_WHITE;
   if (cddr(args) != NULL) colour = checkinteger(DRAWPIXEL, third(args));
-  tft.drawPixel(checkinteger(DRAWPIXEL, first(args)), checkinteger(DRAWPIXEL, second(args)), colour);
-  tft.display();
+  ttgo->tft->drawPixel(checkinteger(DRAWPIXEL, first(args)), checkinteger(DRAWPIXEL, second(args)), colour);
 #endif
   return nil;
 }
@@ -3714,8 +3722,8 @@ object *fn_drawline (object *args, object *env) {
   uint16_t params[4], colour = COLOR_WHITE;
   for (int i=0; i<4; i++) { params[i] = checkinteger(DRAWLINE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWLINE, car(args));
-  tft.drawLine(params[0], params[1], params[2], params[3], colour);
-  tft.display();
+  ttgo->tft->drawLine(params[0], params[1], params[2], params[3], colour);
+  
 #endif
   return nil;
 }
@@ -3726,8 +3734,8 @@ object *fn_drawrect (object *args, object *env) {
   uint16_t params[4], colour = COLOR_WHITE;
   for (int i=0; i<4; i++) { params[i] = checkinteger(DRAWRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWRECT, car(args));
-  tft.drawRect(params[0], params[1], params[2], params[3], colour);
-  tft.display();
+  ttgo->tft->drawRect(params[0], params[1], params[2], params[3], colour);
+  
 #endif
   return nil;
 }
@@ -3738,8 +3746,8 @@ object *fn_fillrect (object *args, object *env) {
   uint16_t params[4], colour = COLOR_WHITE;
   for (int i=0; i<4; i++) { params[i] = checkinteger(FILLRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLRECT, car(args));
-  tft.fillRect(params[0], params[1], params[2], params[3], colour);
-  tft.display();
+  ttgo->tft->fillRect(params[0], params[1], params[2], params[3], colour);
+  
 #endif
   return nil;
 }
@@ -3750,8 +3758,8 @@ object *fn_drawcircle (object *args, object *env) {
   uint16_t params[3], colour = COLOR_WHITE;
   for (int i=0; i<3; i++) { params[i] = checkinteger(DRAWCIRCLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWCIRCLE, car(args));
-  tft.drawCircle(params[0], params[1], params[2], colour);
-  tft.display();
+  ttgo->tft->drawCircle(params[0], params[1], params[2], colour);
+  
 #endif
   return nil;
 }
@@ -3762,8 +3770,8 @@ object *fn_fillcircle (object *args, object *env) {
   uint16_t params[3], colour = COLOR_WHITE;
   for (int i=0; i<3; i++) { params[i] = checkinteger(FILLCIRCLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLCIRCLE, car(args));
-  tft.fillCircle(params[0], params[1], params[2], colour);
-  tft.display();
+  ttgo->tft->fillCircle(params[0], params[1], params[2], colour);
+  
 #endif
   return nil;
 }
@@ -3774,8 +3782,8 @@ object *fn_drawroundrect (object *args, object *env) {
   uint16_t params[5], colour = COLOR_WHITE;
   for (int i=0; i<5; i++) { params[i] = checkinteger(DRAWROUNDRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWROUNDRECT, car(args));
-  tft.drawRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
-  tft.display();
+  ttgo->tft->drawRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
+  
 #endif
   return nil;
 }
@@ -3786,8 +3794,8 @@ object *fn_fillroundrect (object *args, object *env) {
   uint16_t params[5], colour = COLOR_WHITE;
   for (int i=0; i<5; i++) { params[i] = checkinteger(FILLROUNDRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLROUNDRECT, car(args));
-  tft.fillRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
-  tft.display();
+  ttgo->tft->fillRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
+  
 #endif
   return nil;
 }
@@ -3798,8 +3806,8 @@ object *fn_drawtriangle (object *args, object *env) {
   uint16_t params[6], colour = COLOR_WHITE;
   for (int i=0; i<6; i++) { params[i] = checkinteger(DRAWTRIANGLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWTRIANGLE, car(args));
-  tft.drawTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
-  tft.display();
+  ttgo->tft->drawTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
+  
 #endif
   return nil;
 }
@@ -3810,8 +3818,8 @@ object *fn_filltriangle (object *args, object *env) {
   uint16_t params[6], colour = COLOR_WHITE;
   for (int i=0; i<6; i++) { params[i] = checkinteger(FILLTRIANGLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLTRIANGLE, car(args));
-  tft.fillTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
-  tft.display();
+  ttgo->tft->fillTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
+  
 #endif
   return nil;
 }
@@ -3830,9 +3838,9 @@ object *fn_drawchar (object *args, object *env) {
       if (more != NULL) size = checkinteger(DRAWCHAR, car(more));
     }
   }
-  tft.drawChar(checkinteger(DRAWCHAR, first(args)), checkinteger(DRAWCHAR, second(args)), checkchar(DRAWCHAR, third(args)),
+  ttgo->tft->drawChar(checkinteger(DRAWCHAR, first(args)), checkinteger(DRAWCHAR, second(args)), checkchar(DRAWCHAR, third(args)),
     colour, bg, size);
-  tft.display();
+  
 #endif
   return nil;
 }
@@ -3840,7 +3848,7 @@ object *fn_drawchar (object *args, object *env) {
 object *fn_setcursor (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setCursor(checkinteger(SETCURSOR, first(args)), checkinteger(SETCURSOR, second(args)));
+  ttgo->tft->setCursor(checkinteger(SETCURSOR, first(args)), checkinteger(SETCURSOR, second(args)));
 #endif
   return nil;
 }
@@ -3848,8 +3856,8 @@ object *fn_setcursor (object *args, object *env) {
 object *fn_settextcolor (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  if (cdr(args) != NULL) tft.setTextColor(checkinteger(SETTEXTCOLOR, first(args)), checkinteger(SETTEXTCOLOR, second(args)));
-  else tft.setTextColor(checkinteger(SETTEXTCOLOR, first(args)));
+  if (cdr(args) != NULL) ttgo->tft->setTextColor(checkinteger(SETTEXTCOLOR, first(args)), checkinteger(SETTEXTCOLOR, second(args)));
+  else ttgo->tft->setTextColor(checkinteger(SETTEXTCOLOR, first(args)));
 #endif
   return nil;
 }
@@ -3857,7 +3865,7 @@ object *fn_settextcolor (object *args, object *env) {
 object *fn_settextsize (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setTextSize(checkinteger(SETTEXTSIZE, first(args)));
+  ttgo->tft->setTextSize(checkinteger(SETTEXTSIZE, first(args)));
 #endif
   return nil;
 }
@@ -3865,7 +3873,7 @@ object *fn_settextsize (object *args, object *env) {
 object *fn_settextwrap (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setTextWrap(first(args) != NULL);
+  ttgo->tft->setTextWrap(first(args) != NULL);
 #endif
   return nil;
 }
@@ -3875,8 +3883,8 @@ object *fn_fillscreen (object *args, object *env) {
   (void) env;
   uint16_t colour = COLOR_BLACK;
   if (args != NULL) colour = checkinteger(FILLSCREEN, first(args));
-  tft.fillScreen(colour);
-  tft.display();
+  ttgo->tft->fillScreen(colour);
+  
 #endif
   return nil;
 }
@@ -3884,8 +3892,8 @@ object *fn_fillscreen (object *args, object *env) {
 object *fn_setrotation (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setRotation(checkinteger(SETROTATION, first(args)));
-  tft.display();
+  ttgo->tft->setRotation(checkinteger(SETROTATION, first(args)));
+  
 #endif
   return nil;
 }
@@ -3893,13 +3901,15 @@ object *fn_setrotation (object *args, object *env) {
 object *fn_invertdisplay (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.invertDisplay(first(args) != NULL);
-  tft.display();
+  ttgo->tft->invertDisplay(first(args) != NULL);
+  
 #endif
   return nil;
 }
 
 // Insert your own function definitions here
+
+const char my0[] PROGMEM = "exit";
 
 // Built-in procedure names - stored in PROGMEM
 
@@ -4336,6 +4346,7 @@ const tbl_entry_t lookup_table[] PROGMEM = {
   { string212, fn_fillscreen, 0x01 },
   { string213, fn_setrotation, 0x11 },
   { string214, fn_invertdisplay, 0x11 },
+  {my0, fn_exit, 0x00},
 };
 
 // Table lookup functions
@@ -5024,12 +5035,7 @@ object *read (gfun_t gfun) {
 // Setup
 
 void initgfx () {
-#if defined(gfxsupport)
-  Wire.begin();
-  tft.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  tft.fillScreen(COLOR_BLACK);
-  tft.display();
-#endif
+//    ttgo = TTGOClass::getWatch();
 }
 
 void initenv () {
@@ -5037,21 +5043,26 @@ void initenv () {
   tee = symbol(TEE);
 }
 
-void setup () {
-  Serial.begin(9600);
-  int start = millis();
-  while ((millis() - start) < 5000) { if (Serial) break; }
+void ulisp_setup1(){
   initworkspace();
   initenv();
   initsleep();
   initgfx();
+}
+
+void ulisp_setup () {
+  Serial.begin(115200);
+  delay(200);
+  int start = millis();
+  while ((millis() - start) < 5000) { if (Serial) break; }
+  ulisp_setup1();
   pfstring(PSTR("uLisp 3.3 "), pserial); pln(pserial);
 }
 
+
 // Read/Evaluate/Print loop
 
-void repl (object *env) {
-  for (;;) {
+void repl1 (object *env) {
     randomSeed(micros());
     gc(NULL, env);
     #if defined (printfreespace)
@@ -5073,10 +5084,19 @@ void repl (object *env) {
     pop(GCStack);
     pfl(pserial);
     pln(pserial);
-  }
+  
 }
 
-void loop () {
+void repl0 (){
+  repl1(NULL);
+}
+
+void repl (object *env) {
+  for (;;)
+  repl1(env);
+}
+
+void ulisp_loop1 () {
   if (!setjmp(exception)) {
     #if defined(resetautorun)
     volatile int autorun = 12; // Fudge to keep code size the same
