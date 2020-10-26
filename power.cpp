@@ -9,6 +9,7 @@ Created by Lewis he on October 10, 2019.
 
 // Please select the model you want to use in config.h
 #include "config.h"
+#include <../../../../.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -22,6 +23,7 @@ Created by Lewis he on October 10, 2019.
 void ulisp_setup();
 void ulisp_loop();
 void ulisp_repl();
+void ulisp_call_0(char* form);
 
 #define G_EVENT_VBUS_PLUGIN         _BV(0)
 #define G_EVENT_VBUS_REMOVE         _BV(1)
@@ -91,6 +93,7 @@ void low_energy()
             setCpuFrequencyMhz(20);
 
             Serial.println("ENTER IN LIGHT SLEEEP MODE");
+            Serial.flush();
             gpio_wakeup_enable ((gpio_num_t)AXP202_INT, GPIO_INTR_LOW_LEVEL);
             gpio_wakeup_enable ((gpio_num_t)BMA423_INT1, GPIO_INTR_HIGH_LEVEL);
             esp_sleep_enable_gpio_wakeup ();
@@ -307,7 +310,8 @@ void loop()
     }
     if (lv_disp_get_inactive_time(NULL) < DEFAULT_SCREEN_TIMEOUT) {
       ulisp_loop();
-      ulisp_repl();
+        ulisp_repl();
+      ulisp_call_0("(on)");
         lv_task_handler();
     } else {
         low_energy();

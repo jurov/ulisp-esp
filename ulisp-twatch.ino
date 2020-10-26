@@ -5,7 +5,7 @@
 */
 
 // Lisp Library
-const char LispLibrary[] PROGMEM = "";
+//const char LispLibrary[] PROGMEM = "";
 
 // Compile options
 
@@ -14,13 +14,13 @@ const char LispLibrary[] PROGMEM = "";
 // #define printgcs
 // #define sdcardsupport
 // #define gfxsupport
-// #define lisplibrary
+#define lisplibrary
 // #define lineeditor
 // #define vt100
 
 // Includes
 
-// #include "LispLibrary.h"
+#include "LispLibrary.h"
 #include <setjmp.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -37,7 +37,7 @@ const char LispLibrary[] PROGMEM = "";
 #include <Adafruit_SSD1306.h>
 #define COLOR_WHITE 1
 #define COLOR_BLACK 0
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_WIDTH 128 // OLED display width, in pixelsgui_powermgm_event_cb
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET     4
 Adafruit_SSD1306 tft(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
@@ -166,7 +166,7 @@ typedef int BitOrder;
   #define SDCARD_SS_PIN 10
 
 #elif defined(ESP32)
-  #define WORKSPACESIZE 8000-SDSIZE       /* Cells (8*bytes) */
+  #define WORKSPACESIZE 4000-SDSIZE       /* Cells (8*bytes) */
   #define EEPROMSIZE 4096                 /* Bytes available for EEPROM */
   #define SYMBOLTABLESIZE 1024            /* Bytes */
   #define analogWrite(x,y) dacWrite((x),(y))
@@ -205,7 +205,7 @@ object *tee;
 object *tf_progn (object *form, object *env);
 object *eval (object *form, object *env);
 object *read (gfun_t gfun);
-void repl (object *env);
+void repl1 (object *env);
 void printobject (object *form, pfun_t pfun);
 char *lookupbuiltin (symbol_t name);
 intptr_t lookupfn (symbol_t name);
@@ -1091,6 +1091,10 @@ object *lispstring (char *s) {
   }
   obj->cdr = head;
   return obj;
+}
+
+object *lispread (char *s) {
+    
 }
 
 // Lookup variable in environment
@@ -3224,7 +3228,7 @@ object *fn_break (object *args, object *env) {
   (void) args;
   pfstring(PSTR("\nBreak!\n"), pserial);
   BreakLevel++;
-  repl(env);
+  repl1(env);
   BreakLevel--;
   return nil;
 }
@@ -5021,6 +5025,13 @@ object *read (gfun_t gfun) {
   return item;
 }
 
+//Call from C
+void ulisp_call_0(char* form){
+  GlobalString = lispstring(form);
+  GlobalStringIndex = 0;
+  eval(read(gstr), NULL);
+}
+
 // Setup
 
 void initgfx () {
@@ -5037,10 +5048,14 @@ void initenv () {
   tee = symbol(TEE);
 }
 
-void setup () {
-  Serial.begin(9600);
+void setup1 () {
+  Serial.begin(115200);
   int start = millis();
   while ((millis() - start) < 5000) { if (Serial) break; }
+  ulisp_setup();
+}
+
+void ulisp_setup() {
   initworkspace();
   initenv();
   initsleep();
@@ -5050,8 +5065,8 @@ void setup () {
 
 // Read/Evaluate/Print loop
 
-void repl (object *env) {
-  for (;;) {
+void repl1 (object *env) {
+//  for (;;) {
     randomSeed(micros());
     gc(NULL, env);
     #if defined (printfreespace)
@@ -5073,10 +5088,14 @@ void repl (object *env) {
     pop(GCStack);
     pfl(pserial);
     pln(pserial);
-  }
+//  }
 }
 
-void loop () {
+void ulisp_repl () {
+   repl1(NULL);
+}
+
+void ulisp_loop () {
   if (!setjmp(exception)) {
     #if defined(resetautorun)
     volatile int autorun = 12; // Fudge to keep code size the same
@@ -5096,5 +5115,5 @@ void loop () {
   if (!tstflag(LIBRARYLOADED)) { setflag(LIBRARYLOADED); loadfromlibrary(NULL); }
   #endif
   client.stop();
-  repl(NULL);
+//  repl(NULL);
 }
