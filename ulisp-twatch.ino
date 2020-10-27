@@ -13,7 +13,7 @@
 #define printfreespace
 // #define printgcs
 // #define sdcardsupport
-// #define gfxsupport
+#define gfxsupport
 #define lisplibrary
 // #define lineeditor
 // #define vt100
@@ -31,16 +31,14 @@
 #elif defined (ESP32)
   #include <WiFi.h>
 #endif
+#include "config.h"
 
 #if defined(gfxsupport)
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_SSD1306.h>
-#define COLOR_WHITE 1
-#define COLOR_BLACK 0
-#define SCREEN_WIDTH 128 // OLED display width, in pixelsgui_powermgm_event_cb
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define OLED_RESET     4
-Adafruit_SSD1306 tft(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
+extern TTGOClass *ttgo;
+#define COLOR_WHITE TFT_WHITE
+#define COLOR_BLACK TFT_BLACK
+#define SCREEN_WIDTH 320 // OLED display width, in pixels
+#define SCREEN_HEIGHT 240 // OLED display height, in pixels
 #endif
 
 #if defined(sdcardsupport)
@@ -1363,7 +1361,7 @@ inline void WiFiwrite (char c) { client.write(c); }
 inline void SDwrite (char c) { SDpfile.write(c); }
 #endif
 #if defined(gfxsupport)
-inline void gfxwrite (char c) { tft.write(c); tft.display(); }
+inline void gfxwrite (char c) { ttgo->tft->write(c); }
 #endif
 
 pfun_t pstreamfun (object *args) {
@@ -3707,8 +3705,7 @@ object *fn_drawpixel (object *args, object *env) {
   (void) env;
   uint16_t colour = COLOR_WHITE;
   if (cddr(args) != NULL) colour = checkinteger(DRAWPIXEL, third(args));
-  tft.drawPixel(checkinteger(DRAWPIXEL, first(args)), checkinteger(DRAWPIXEL, second(args)), colour);
-  tft.display();
+  ttgo->tft->drawPixel(checkinteger(DRAWPIXEL, first(args)), checkinteger(DRAWPIXEL, second(args)), colour);
 #endif
   return nil;
 }
@@ -3719,8 +3716,8 @@ object *fn_drawline (object *args, object *env) {
   uint16_t params[4], colour = COLOR_WHITE;
   for (int i=0; i<4; i++) { params[i] = checkinteger(DRAWLINE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWLINE, car(args));
-  tft.drawLine(params[0], params[1], params[2], params[3], colour);
-  tft.display();
+  ttgo->tft->drawLine(params[0], params[1], params[2], params[3], colour);
+  
 #endif
   return nil;
 }
@@ -3731,8 +3728,8 @@ object *fn_drawrect (object *args, object *env) {
   uint16_t params[4], colour = COLOR_WHITE;
   for (int i=0; i<4; i++) { params[i] = checkinteger(DRAWRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWRECT, car(args));
-  tft.drawRect(params[0], params[1], params[2], params[3], colour);
-  tft.display();
+  ttgo->tft->drawRect(params[0], params[1], params[2], params[3], colour);
+  
 #endif
   return nil;
 }
@@ -3743,8 +3740,8 @@ object *fn_fillrect (object *args, object *env) {
   uint16_t params[4], colour = COLOR_WHITE;
   for (int i=0; i<4; i++) { params[i] = checkinteger(FILLRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLRECT, car(args));
-  tft.fillRect(params[0], params[1], params[2], params[3], colour);
-  tft.display();
+  ttgo->tft->fillRect(params[0], params[1], params[2], params[3], colour);
+  
 #endif
   return nil;
 }
@@ -3755,8 +3752,8 @@ object *fn_drawcircle (object *args, object *env) {
   uint16_t params[3], colour = COLOR_WHITE;
   for (int i=0; i<3; i++) { params[i] = checkinteger(DRAWCIRCLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWCIRCLE, car(args));
-  tft.drawCircle(params[0], params[1], params[2], colour);
-  tft.display();
+  ttgo->tft->drawCircle(params[0], params[1], params[2], colour);
+  
 #endif
   return nil;
 }
@@ -3767,8 +3764,8 @@ object *fn_fillcircle (object *args, object *env) {
   uint16_t params[3], colour = COLOR_WHITE;
   for (int i=0; i<3; i++) { params[i] = checkinteger(FILLCIRCLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLCIRCLE, car(args));
-  tft.fillCircle(params[0], params[1], params[2], colour);
-  tft.display();
+  ttgo->tft->fillCircle(params[0], params[1], params[2], colour);
+  
 #endif
   return nil;
 }
@@ -3779,8 +3776,8 @@ object *fn_drawroundrect (object *args, object *env) {
   uint16_t params[5], colour = COLOR_WHITE;
   for (int i=0; i<5; i++) { params[i] = checkinteger(DRAWROUNDRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWROUNDRECT, car(args));
-  tft.drawRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
-  tft.display();
+  ttgo->tft->drawRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
+  
 #endif
   return nil;
 }
@@ -3791,8 +3788,8 @@ object *fn_fillroundrect (object *args, object *env) {
   uint16_t params[5], colour = COLOR_WHITE;
   for (int i=0; i<5; i++) { params[i] = checkinteger(FILLROUNDRECT, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLROUNDRECT, car(args));
-  tft.fillRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
-  tft.display();
+  ttgo->tft->fillRoundRect(params[0], params[1], params[2], params[3], params[4], colour);
+  
 #endif
   return nil;
 }
@@ -3803,8 +3800,8 @@ object *fn_drawtriangle (object *args, object *env) {
   uint16_t params[6], colour = COLOR_WHITE;
   for (int i=0; i<6; i++) { params[i] = checkinteger(DRAWTRIANGLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(DRAWTRIANGLE, car(args));
-  tft.drawTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
-  tft.display();
+  ttgo->tft->drawTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
+  
 #endif
   return nil;
 }
@@ -3815,8 +3812,8 @@ object *fn_filltriangle (object *args, object *env) {
   uint16_t params[6], colour = COLOR_WHITE;
   for (int i=0; i<6; i++) { params[i] = checkinteger(FILLTRIANGLE, car(args)); args = cdr(args); }
   if (args != NULL) colour = checkinteger(FILLTRIANGLE, car(args));
-  tft.fillTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
-  tft.display();
+  ttgo->tft->fillTriangle(params[0], params[1], params[2], params[3], params[4], params[5], colour);
+  
 #endif
   return nil;
 }
@@ -3835,9 +3832,9 @@ object *fn_drawchar (object *args, object *env) {
       if (more != NULL) size = checkinteger(DRAWCHAR, car(more));
     }
   }
-  tft.drawChar(checkinteger(DRAWCHAR, first(args)), checkinteger(DRAWCHAR, second(args)), checkchar(DRAWCHAR, third(args)),
+  ttgo->tft->drawChar(checkinteger(DRAWCHAR, first(args)), checkinteger(DRAWCHAR, second(args)), checkchar(DRAWCHAR, third(args)),
     colour, bg, size);
-  tft.display();
+  
 #endif
   return nil;
 }
@@ -3845,7 +3842,7 @@ object *fn_drawchar (object *args, object *env) {
 object *fn_setcursor (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setCursor(checkinteger(SETCURSOR, first(args)), checkinteger(SETCURSOR, second(args)));
+  ttgo->tft->setCursor(checkinteger(SETCURSOR, first(args)), checkinteger(SETCURSOR, second(args)));
 #endif
   return nil;
 }
@@ -3853,8 +3850,8 @@ object *fn_setcursor (object *args, object *env) {
 object *fn_settextcolor (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  if (cdr(args) != NULL) tft.setTextColor(checkinteger(SETTEXTCOLOR, first(args)), checkinteger(SETTEXTCOLOR, second(args)));
-  else tft.setTextColor(checkinteger(SETTEXTCOLOR, first(args)));
+  if (cdr(args) != NULL) ttgo->tft->setTextColor(checkinteger(SETTEXTCOLOR, first(args)), checkinteger(SETTEXTCOLOR, second(args)));
+  else ttgo->tft->setTextColor(checkinteger(SETTEXTCOLOR, first(args)));
 #endif
   return nil;
 }
@@ -3862,7 +3859,7 @@ object *fn_settextcolor (object *args, object *env) {
 object *fn_settextsize (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setTextSize(checkinteger(SETTEXTSIZE, first(args)));
+  ttgo->tft->setTextSize(checkinteger(SETTEXTSIZE, first(args)));
 #endif
   return nil;
 }
@@ -3870,7 +3867,7 @@ object *fn_settextsize (object *args, object *env) {
 object *fn_settextwrap (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setTextWrap(first(args) != NULL);
+  ttgo->tft->setTextWrap(first(args) != NULL);
 #endif
   return nil;
 }
@@ -3880,8 +3877,8 @@ object *fn_fillscreen (object *args, object *env) {
   (void) env;
   uint16_t colour = COLOR_BLACK;
   if (args != NULL) colour = checkinteger(FILLSCREEN, first(args));
-  tft.fillScreen(colour);
-  tft.display();
+  ttgo->tft->fillScreen(colour);
+  
 #endif
   return nil;
 }
@@ -3889,8 +3886,8 @@ object *fn_fillscreen (object *args, object *env) {
 object *fn_setrotation (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.setRotation(checkinteger(SETROTATION, first(args)));
-  tft.display();
+  ttgo->tft->setRotation(checkinteger(SETROTATION, first(args)));
+  
 #endif
   return nil;
 }
@@ -3898,8 +3895,8 @@ object *fn_setrotation (object *args, object *env) {
 object *fn_invertdisplay (object *args, object *env) {
 #if defined(gfxsupport)
   (void) env;
-  tft.invertDisplay(first(args) != NULL);
-  tft.display();
+  ttgo->tft->invertDisplay(first(args) != NULL);
+  
 #endif
   return nil;
 }
@@ -5036,12 +5033,7 @@ bool ulisp_call_0(char* form){
 // Setup
 
 void initgfx () {
-#if defined(gfxsupport)
-  Wire.begin();
-  tft.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  tft.fillScreen(COLOR_BLACK);
-  tft.display();
-#endif
+//    ttgo = TTGOClass::getWatch();
 }
 
 void initenv () {
