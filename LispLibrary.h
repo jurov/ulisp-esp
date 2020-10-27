@@ -1,4 +1,5 @@
 const char LispLibrary[] PROGMEM = 
-"(defun sq (x) (* x x))"
 "(defun cub (x) (* x x x))"
-"(defun on () nil)";
+"(defvar sleep-request nil)"
+"(defun on () (let ((res(not sleep-request))) (setq sleep-request nil) res))"
+"(defvar power-status nil)";

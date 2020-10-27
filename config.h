@@ -5,7 +5,7 @@
 
 
 // => Function select
-#define LILYGO_WATCH_LVGL                                //To use LVGL, you need to enable the macro LVGL
+//#define LILYGO_WATCH_LVGL                                //To use LVGL, you need to enable the macro LVGL
 //#define LILYGO_WATCH_LVGL_FS                        //Need to use LVGL file system need to define this macro
 //#define LILYGO_WATCH_LVGL_DECODER       //Need to use PNG decoding, to define this macro
 #include <LilyGoWatch.h>

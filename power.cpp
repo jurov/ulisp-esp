@@ -9,7 +9,6 @@ Created by Lewis he on October 10, 2019.
 
 // Please select the model you want to use in config.h
 #include "config.h"
-#include <../../../../.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,7 +22,7 @@ Created by Lewis he on October 10, 2019.
 void ulisp_setup();
 void ulisp_loop();
 void ulisp_repl();
-void ulisp_call_0(char* form);
+bool ulisp_call_0(char* form);
 
 #define G_EVENT_VBUS_PLUGIN         _BV(0)
 #define G_EVENT_VBUS_REMOVE         _BV(1)
@@ -83,7 +82,7 @@ void low_energy()
     if (ttgo->bl->isOn()) {
         xEventGroupSetBits(isr_group, WATCH_FLAG_SLEEP_MODE);
         ttgo->closeBL();
-        ttgo->stopLvglTick();
+//        ttgo->stopLvglTick();
         ttgo->bma->enableStepCountInterrupt(false);
         ttgo->displaySleep();
         if (!WiFi.isConnected()) {
@@ -100,13 +99,13 @@ void low_energy()
             esp_light_sleep_start();
         }
     } else {
-        ttgo->startLvglTick();
+//        ttgo->startLvglTick();
         ttgo->displayWakeup();
         ttgo->rtc->syncToSystem();
 //        updateStepCounter(ttgo->bma->getCounter());
 //        updateBatteryLevel();
 //        updateBatteryIcon(LV_ICON_CALCULATION);
-        lv_disp_trig_activity(NULL);
+//        lv_disp_trig_activity(NULL);
         ttgo->openBL();
         ttgo->bma->enableStepCountInterrupt();
     }
@@ -139,7 +138,7 @@ void setup()
     ttgo->power->setPowerOutPut(AXP202_LDO4, AXP202_OFF);
 
     //Initialize lvgl
-    ttgo->lvgl_begin();
+    //ttgo->lvgl_begin();
 
     // Enable BMA423 interrupt ，
     // The default interrupt configuration,
@@ -217,7 +216,7 @@ void setup()
     ulisp_setup();
 
     //Clear lvgl counter
-    lv_disp_trig_activity(NULL);
+    //lv_disp_trig_activity(NULL);
 
 #ifdef LILYGO_WATCH_HAS_BUTTON
     //In lvgl we call the button processing regularly
@@ -234,6 +233,8 @@ void loop()
 {
     bool  rlst;
     uint8_t data;
+      ulisp_loop();
+      while(ulisp_call_0("(on)")){
     //! Fast response wake-up interrupt
     EventBits_t  bits = xEventGroupGetBits(isr_group);
     if (bits & WATCH_FLAG_SLEEP_EXIT) {
@@ -281,18 +282,19 @@ void loop()
         case Q_EVENT_AXP_INT:
             ttgo->power->readIRQ();
             if (ttgo->power->isVbusPlugInIRQ()) {
-//                updateBatteryIcon(LV_ICON_CHARGE);
+                ulisp_call_0("(setq power-status 1)");
             }
             if (ttgo->power->isVbusRemoveIRQ()) {
-//                updateBatteryIcon(LV_ICON_CALCULATION);
+                ulisp_call_0("(setq power-status 0)");
             }
             if (ttgo->power->isChargingDoneIRQ()) {
-//                updateBatteryIcon(LV_ICON_CALCULATION);
+                ulisp_call_0("(setq power-status 2)");
             }
             if (ttgo->power->isPEKShortPressIRQ()) {
                 ttgo->power->clearIRQ();
-                low_energy();
-                return;
+                ulisp_call_0("(setq sleep-request t)");
+//                low_energy();
+//                return;
             }
             ttgo->power->clearIRQ();
             break;
@@ -308,12 +310,16 @@ void loop()
         }
 
     }
-    if (lv_disp_get_inactive_time(NULL) < DEFAULT_SCREEN_TIMEOUT) {
+        ulisp_repl();
+      };
+        low_energy();
+    
+/*    if (lv_disp_get_inactive_time(NULL) < DEFAULT_SCREEN_TIMEOUT) {
       ulisp_loop();
         ulisp_repl();
       ulisp_call_0("(on)");
         lv_task_handler();
     } else {
         low_energy();
-    }
+    }*/
 }
